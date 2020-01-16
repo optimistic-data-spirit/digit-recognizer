@@ -1,17 +1,34 @@
 ---
-title: "ODS Digit Recognizer Project - Some options with R"
+title: "The Digit Recognizer Project"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
 ```
 
-## R Markdown
+## The project
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Through the Optimistic Data Spirit, this is my process in R for the Kaggle competition to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## The data
+
+The MNIST database (Modified National Institute of Standards and Technology database) is a large database of handwritten digits that is commonly used for training various image processing systems (Wikipedia). Each image is 28 pixels in height and 28 pixels in width, for a total of 784 pixels. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker (Kaggle website).
+
+We received three csv files: 
+
+* train.csv - the training dataset with 785 columns. The first column, called "label", is the digit that was drawn by the user. The rest of the columns contain the pixel-values of the associated image. Each pixel column in the training set has a name like pixelx, where x is an integer between 0 and 783, inclusive. To locate this pixel on the image, suppose that we have decomposed x as x = i * 28 + j, where i and j are integers between 0 and 27, inclusive. Then pixelx is located on row i and column j of a 28 x 28 matrix, (indexing by zero).
+
+* test.csv - same as the training set, except that it does not contain the "label" column.
+
+* sample-submission.csv - for each of the 28000 images in the test set, output a single line containing the ImageId and the digit you predict.
+
+## The evaluation
+
+The evaluation metric for this contest is the categorization accuracy, or the proportion of test images that are correctly classified. For example, a categorization accuracy of 0.97 indicates that you have correctly classified all but 3% of the images.
+
+
 
 ```{r cars}
 summary(cars)
