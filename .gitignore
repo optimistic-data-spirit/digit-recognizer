@@ -1,0 +1,5 @@
+# exclude data by default
+data/**/*.csv
+
+# exclude R Markdown outputs
+notebooks/*.html
