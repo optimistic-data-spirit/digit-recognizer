@@ -8,9 +8,9 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 ```
 
-## The project
+# The project
 
-Through the Optimistic Data Spirit, this is my process in R for the Kaggle competition to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
+In collaboration with Optimistic Data Spirit, this is my process in R to solve the Digit Recognizer Project Kaggle competition and hence to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
 
 ## The data
 
@@ -28,18 +28,69 @@ We received three csv files:
 
 The evaluation metric for this contest is the categorization accuracy, or the proportion of test images that are correctly classified. For example, a categorization accuracy of 0.97 indicates that you have correctly classified all but 3% of the images.
 
+# My approach
 
-
-```{r cars}
-summary(cars)
+```{r, include = FALSE}
+# clean memory
+rm(list=ls())
+# call libraries
+library(keras)
 ```
 
-## Including Plots
+Watching the Deep Learning with R in Motion: the MNIST dataset video from Manning publication, I took the follwing notes: 
 
-You can also embed plots, for example:
+This is a single label multi-class (10 options) classification (trying to predict a categorical variable) problem. 
+This is a computer vision problem for which we can use a Convolutional Network (CNN).
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+The three phases of machine learning projects are: 
+
+1. Data preparation
+    + Obtain
+    + Rearrange
+    + Normalize
+    + Reformat
+2. Model definition
+    + I
+    + I
+3. Evaluation
+    + Item 3a
+    + Item 3b
+
+Steps to solve this problem include:
+
+* Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255)
+
+## Data preparation
+
+### Obtain data
+
+I obtained my dataset from the Kaggle competition. 
+
+```{r, include = FALSE}
+train.data <- data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+test.data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+dim(train.data)
+dim(test.data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Rearrange data
+
+Want a 2D tensor (like a data.frame or classical R matrix). This was done by Kaggle for us.
+
+### Normalize the values
+
+Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255)
+
+```{r, include = FALSE}
+norm.train.data <- train.data/255
+norm.train.data$label <- norm.train.data*255
+
+norm.test.data <- train.data/255
+```
+
+So we now have two 2D normalize tensors.
+
+## Useful resources
+
+https://www.youtube.com/watch?v=K6e8WnJeivQ
+
