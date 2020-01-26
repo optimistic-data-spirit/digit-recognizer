@@ -62,6 +62,8 @@ Steps to solve this problem include:
 
 ## Data preparation
 
+Note that the data received from Kaggle is in a different format than the video I am following.
+
 ### Obtain data
 
 I obtained my dataset from the Kaggle competition. 
@@ -69,6 +71,9 @@ I obtained my dataset from the Kaggle competition.
 ```{r, include = FALSE}
 train.data <- data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
 test.data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+```
+
+```{r}
 dim(train.data)
 dim(test.data)
 ```
@@ -79,16 +84,74 @@ Want a 2D tensor (like a data.frame or classical R matrix). This was done by Kag
 
 ### Normalize the values
 
-Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255)
+Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
-```{r, include = FALSE}
+```{r}
 norm.train.data <- train.data/255
-norm.train.data$label <- norm.train.data*255
+#norm.train.data$label <- norm.train.data*255
 
 norm.test.data <- train.data/255
 ```
 
-So we now have two 2D normalize tensors.
+So we now have two 2D normalized tensors (close to a matrix).
+
+Tensor: 
+
+rank: # of dimension
+data type: typeof() in R
+shape: dim() in R
+
+### Reformat the labels
+
+```{r}
+labels <- train.data$label
+train_labels <- to_categorical(labels)
+```
+
+## Building a model
+
+### Simple neural network
+
+Building a neural network:
+1 - define network of architecture building layers
+2 - compile the network (with 2 functions being the optimization and the loss function)
+3 - train the model with the fit function
+
+```{r architecture}
+network <- keras_model_sequential() %>%
+  layer_dense(units = 512, activation = "relu", input_shape = c(28 * 28)) %>%
+  layer_dense(units = 10, activation = "softmax")
+  # units is the number of neurons in a layer
+  summary(network)
+```
+
+### Compile the model
+
+Add specific function to tell tensor flow which one to use.
+The loss function is what we want to minimize.
+The metrics will be tracked and is the function we want to maximize.
+
+```{r compile}
+network %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+```
+
+There is no need save this into a new object since the compile function update the object, here being network.
+
+### Train the model
+
+Provide the label as the desired output (this is supervised learning).
+
+```{r train}
+history <- network %>%
+  # fit(train_images, train_labels, epochs = 5, batch_size = 128)
+  fit(norm.train.data, norm.train.data$labels, epochs = 5, batch_size = 128)
+```
+
+
 
 ## Useful resources
 
