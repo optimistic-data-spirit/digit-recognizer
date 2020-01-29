@@ -34,10 +34,11 @@ The evaluation metric for this contest is the categorization accuracy, or the pr
 # clean memory
 rm(list=ls())
 # call libraries
+library(tidyverse)
 library(keras)
 ```
 
-Watching the Deep Learning with R in Motion: the MNIST dataset video from Manning publication, I took the follwing notes: 
+Watching the Deep Learning with R in Motion: the MNIST dataset video from Manning publication, I took the following notes: 
 
 This is a single label multi-class (10 options) classification (trying to predict a categorical variable) problem. 
 This is a computer vision problem for which we can use a Convolutional Network (CNN).
@@ -69,28 +70,30 @@ Note that the data received from Kaggle is in a different format than the video 
 I obtained my dataset from the Kaggle competition. 
 
 ```{r, include = FALSE}
-train.data <- data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
-test.data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
-```
+training <- data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+testing <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
 
-```{r}
-dim(train.data)
-dim(test.data)
+# brief visualisation of the datasets
+dim(training)
+dim(testing)
 ```
 
 ### Rearrange data
 
-Want a 2D tensor (like a data.frame or classical R matrix). This was done by Kaggle for us.
+We want a 2D tensor (like a data.frame or classical R matrix). This was done by Kaggle for us.
 
 ### Normalize the values
 
 Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
 ```{r}
-norm.train.data <- train.data/255
-#norm.train.data$label <- norm.train.data*255
+train.data <- training[,2:785]/255
+labels <- training[,1]
+test.data <- testing/255
 
-norm.test.data <- train.data/255
+#Change dataset to matrix
+train.data<-data.matrix(train.data)
+test.data<-data.matrix(test.data)
 ```
 
 So we now have two 2D normalized tensors (close to a matrix).
@@ -103,9 +106,9 @@ shape: dim() in R
 
 ### Reformat the labels
 
+Need to format the labels as the data (to categorical), aka one hot encoding.
 ```{r}
-labels <- train.data$label
-train_labels <- to_categorical(labels)
+train.labels <- to_categorical(labels)
 ```
 
 ## Building a model
@@ -156,4 +159,6 @@ history <- network %>%
 ## Useful resources
 
 https://www.youtube.com/watch?v=K6e8WnJeivQ
+https://www.kaggle.com/wwu651/cnn-keras-with-r
+
 
