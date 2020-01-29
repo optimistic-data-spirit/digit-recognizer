@@ -70,7 +70,7 @@ Note that the data received from Kaggle is in a different format than the video 
 I obtained my dataset from the Kaggle competition. 
 
 ```{r, include = FALSE}
-training <- data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+training <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
 testing <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
 
 # brief visualisation of the datasets
@@ -92,8 +92,8 @@ labels <- training[,1]
 test.data <- testing/255
 
 #Change dataset to matrix
-train.data<-data.matrix(train.data)
-test.data<-data.matrix(test.data)
+train.data <- data.matrix(train.data)
+test.data <- data.matrix(test.data)
 ```
 
 So we now have two 2D normalized tensors (close to a matrix).
@@ -151,7 +151,7 @@ Provide the label as the desired output (this is supervised learning).
 ```{r train}
 history <- network %>%
   # fit(train_images, train_labels, epochs = 5, batch_size = 128)
-  fit(norm.train.data, norm.train.data$labels, epochs = 5, batch_size = 128)
+  fit(train.data, train.labels, epochs = 5, batch_size = 128)
 ```
 
 
