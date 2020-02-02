@@ -87,13 +87,13 @@ We want a 2D tensor (like a data.frame or classical R matrix). This was done by 
 Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
 ```{r}
-train.data <- training[,2:785]/255
-labels <- training[,1]
-test.data <- testing/255
+train_data <- training[,2:785]/255
+train_labels <- training[,1]
+test_data <- testing/255
 
 #Change dataset to matrix
-train.data <- data.matrix(train.data)
-test.data <- data.matrix(test.data)
+train_data <- data.matrix(train_data)
+test_data <- data.matrix(test_data)
 ```
 
 So we now have two 2D normalized tensors (close to a matrix).
@@ -108,7 +108,7 @@ shape: dim() in R
 
 Need to format the labels as the data (to categorical), aka one hot encoding.
 ```{r}
-train.labels <- to_categorical(labels)
+train_labels <- to_categorical(train_labels)
 ```
 
 ## Building a model
@@ -150,9 +150,40 @@ Provide the label as the desired output (this is supervised learning).
 
 ```{r train}
 history <- network %>%
-  # fit(train_images, train_labels, epochs = 5, batch_size = 128)
-  fit(train.data, train.labels, epochs = 5, batch_size = 128)
+  fit(train_data, train_labels, epochs = 5, batch_size = 128)
 ```
+
+### Evaluate the model
+
+```{r evaluate}
+# this barfs as we did not split the dataset in two sets
+metrics <- network %>%
+  evaluate(test_data, test_labels)
+metrics
+```
+
+### Predict the test values
+
+```{r predict}
+Labels <- network %>% predict_classes(test_data)
+Labels
+```
+
+
+### Save predictions to submission format
+
+```{r submission format}
+# needs to be two columns: ImageID, Label
+ImageID <- c(1:28000)
+Label <- Labels
+
+df <- data.frame(ImageID, Label)
+
+path <- "~/projects/kaggle/digit-recognizer/data/processed/submission.csv"
+
+write_csv(df, path)
+```
+
 
 
 
