@@ -10,7 +10,7 @@ rm(list = ls())
 
 # The project
 
-In collaboration with Optimistic Data Spirit, this is my process in R to solve the Digit Recognizer Project Kaggle competition and hence to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
+In collaboration with the Optimistic Data Spirit, this is my process in R to solve the Digit Recognizer Project Kaggle competition and hence to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
 
 ## The data
 
@@ -150,7 +150,7 @@ Provide the label as the desired output (this is supervised learning).
 
 ```{r train}
 history <- network %>%
-  fit(train_data, train_labels, epochs = 5, batch_size = 128)
+  fit(train_data, train_labels, epochs = 25, batch_size = 128)
 ```
 
 ### Evaluate the model
@@ -184,12 +184,9 @@ path <- "~/projects/kaggle/digit-recognizer/data/processed/submission.csv"
 write_csv(df, path)
 ```
 
-
-
-
 ## Useful resources
 
 https://www.youtube.com/watch?v=K6e8WnJeivQ
 https://www.kaggle.com/wwu651/cnn-keras-with-r
-
+Deep Learning with R, Francois Chollet
 
