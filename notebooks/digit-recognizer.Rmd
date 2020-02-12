@@ -10,11 +10,11 @@ rm(list = ls())
 
 # The project
 
-In collaboration with the Optimistic Data Spirit, this is my process in R to solve the Digit Recognizer Project Kaggle competition and hence to learn computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
+In collaboration with the Optimistic Data Spirit, this is my process in R to solve the Digit Recognizer Project Kaggle competition to learn about computer vision fundamentals. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
 
 ## The data
 
-The MNIST database (Modified National Institute of Standards and Technology database) is a large database of handwritten digits that is commonly used for training various image processing systems (Wikipedia). Each image is 28 pixels in height and 28 pixels in width, for a total of 784 pixels. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker (Kaggle website).
+As specified on the Kaggle website, The MNIST database (Modified National Institute of Standards and Technology database) is a large database of handwritten digits that is commonly used for training various image processing systems (Wikipedia). Each image is 28 pixels in height and 28 pixels in width, for a total of 784 pixels. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker.
 
 We received three csv files: 
 
@@ -24,11 +24,41 @@ We received three csv files:
 
 * sample-submission.csv - for each of the 28000 images in the test set, output a single line containing the ImageId and the digit you predict.
 
+Interesting to note that the format in which the data is provided on the Kaggle plateform is already reshaped from the initial 28 x 28 pixel images. So no need to do this step.
+
+The data provided on the Kaggle website is also different than the original MNIST dataset in the sense that only 42000 of the original 60000 training set where provided. To test the accuracy of the mmodel to be build, one can set aside 10% of the training dataset to test before submitting to the website for evaluation.
+
 ## The evaluation
 
 The evaluation metric for this contest is the categorization accuracy, or the proportion of test images that are correctly classified. For example, a categorization accuracy of 0.97 indicates that you have correctly classified all but 3% of the images.
-
+  
 # My approach
+
+Instructed by the Deep Learning with R in Motion: the MNIST dataset video from Manning publication, I took the following notes.
+
+The three phases of machine learning projects are:
+
+1. Data preparation
+    + Obtain
+    + Rearrange
+    + Normalize
+    + Reformat
+2. Model definition (building the model)
+    + define network of architecture building layers
+    + compile the network (with 2 functions being the optimization and the loss function)
+    + train the model with the fit function
+3. Evaluation
+    + Predict labels of the test dataset
+    + Confusion matrix
+    + Determine accuracy
+    
+Once the model is trained and the accuracy has been tested, we can use it to make predictions.
+
+This is a single label multi-class (10 options) classification (trying to predict a categorical variable) problem. This is a computer vision problem for which we can use a neural network.
+
+## Data preparation
+
+Note that the data received from Kaggle is in a different format than the video I am following. The original MNIST dataset is provided as 28 x28 pixel images that have to be reshaped to be used in the CNN. 
 
 ```{r, include = FALSE}
 # clean memory
@@ -38,44 +68,23 @@ library(tidyverse)
 library(keras)
 ```
 
-Watching the Deep Learning with R in Motion: the MNIST dataset video from Manning publication, I took the following notes: 
-
-This is a single label multi-class (10 options) classification (trying to predict a categorical variable) problem. 
-This is a computer vision problem for which we can use a Convolutional Network (CNN).
-
-The three phases of machine learning projects are: 
-
-1. Data preparation
-    + Obtain
-    + Rearrange
-    + Normalize
-    + Reformat
-2. Model definition
-    + I
-    + I
-3. Evaluation
-    + Item 3a
-    + Item 3b
-
-Steps to solve this problem include:
-
-* Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255)
-
 ## Data preparation
 
-Note that the data received from Kaggle is in a different format than the video I am following.
+Note that the data received from Kaggle is in a different format than the video I am following. The original MNIST dataset is provided as 28 x28 pixel images that have to be reshaped to be used in the CNN. 
 
 ### Obtain data
 
 I obtained my dataset from the Kaggle competition. 
 
+So good practice is to take the dataset and split it two datasets (80% for the training of the model and 20% for the testing of the model). However, confusingly, the datasets provided by Kaggle are named train.csv and test.csv.
+
 ```{r, include = FALSE}
-training <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
-testing <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+mnist_data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+predictions <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
 
 # brief visualisation of the datasets
-dim(training)
-dim(testing)
+dim(mnist_data)
+dim(data_to_predict)
 ```
 
 ### Rearrange data
@@ -87,22 +96,18 @@ We want a 2D tensor (like a data.frame or classical R matrix). This was done by 
 Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
 ```{r}
-train_data <- training[,2:785]/255
-train_labels <- training[,1]
-test_data <- testing/255
+mnist_data_images <- mnist_data[,2:785]/255
+mnist_data_labels <- mnist_data[,1]
+prediction_images <- testing/255
 
 #Change dataset to matrix
-train_data <- data.matrix(train_data)
-test_data <- data.matrix(test_data)
+mnist_data_images <- data.matrix(mnist_data_images)
+prediction_images <- data.matrix(prediction_images)
 ```
 
-So we now have two 2D normalized tensors (close to a matrix).
+RENDUE ICI - NOW HAVE TO SPLIT THE DATA INTO TRAINING AND TESTING BEFORE PREDICTIONS.
 
-Tensor: 
-
-rank: # of dimension
-data type: typeof() in R
-shape: dim() in R
+So we now have two 2D normalized tensors (similar, but not the same as a matrix).
 
 ### Reformat the labels
 
@@ -111,7 +116,7 @@ Need to format the labels as the data (to categorical), aka one hot encoding.
 train_labels <- to_categorical(train_labels)
 ```
 
-## Building a model
+## Model definition (building a model)
 
 ### Simple neural network
 
@@ -142,7 +147,7 @@ network %>% compile(
 )
 ```
 
-There is no need save this into a new object since the compile function update the object, here being network.
+There is no need save this into a new object since the compile function update the object, here being the network.
 
 ### Train the model
 
@@ -150,7 +155,7 @@ Provide the label as the desired output (this is supervised learning).
 
 ```{r train}
 history <- network %>%
-  fit(train_data, train_labels, epochs = 25, batch_size = 128)
+  fit(train_data, train_labels, epochs = 25, batch_size = 86)
 ```
 
 ### Evaluate the model
