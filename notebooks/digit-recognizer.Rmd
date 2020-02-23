@@ -24,9 +24,9 @@ We received three csv files:
 
 * sample-submission.csv - for each of the 28000 images in the test set, output a single line containing the ImageId and the digit you predict.
 
-Interesting to note that the format in which the data is provided on the Kaggle plateform is already reshaped from the initial 28 x 28 pixel images. So no need to do this step.
+The format in which the data is provided on the Kaggle plateform is already reshaped from the initial 28 x 28 pixel images. So no need to do this step.
 
-The data provided on the Kaggle website is also different than the original MNIST dataset in the sense that only 42000 of the original 60000 training set where provided. To test the accuracy of the mmodel to be build, one can set aside 10% of the training dataset to test before submitting to the website for evaluation.
+The data provided on the Kaggle website is also different than the original MNIST dataset in the sense that only 42000 of the original 60000 training set where provided. To test the accuracy of the mmodel to be build, one can set aside 20% of the training dataset to test before submitting to the website for evaluation.
 
 ## The evaluation
 
@@ -71,20 +71,29 @@ library(keras)
 ## Data preparation
 
 Note that the data received from Kaggle is in a different format than the video I am following. The original MNIST dataset is provided as 28 x28 pixel images that have to be reshaped to be used in the CNN. 
-
 ### Obtain data
 
 I obtained my dataset from the Kaggle competition. 
 
-So good practice is to take the dataset and split it two datasets (80% for the training of the model and 20% for the testing of the model). However, confusingly, the datasets provided by Kaggle are named train.csv and test.csv.
-
 ```{r, include = FALSE}
-mnist_data <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
-predictions <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+train_dataset <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+predict_dataset <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
 
 # brief visualisation of the datasets
-dim(mnist_data)
-dim(data_to_predict)
+dim(train_dataset)
+dim(predict_dataset)
+```
+
+Good practice is to take the dataset and split it two datasets (80% for the training of the model and 20% for the testing of the model). However, the datasets provided by Kaggle are named train.csv and test.csv. If I understand this correctly, the train.csv needs to be split into train_train and train_test datasets. The test dataset is the one for which we need to provide predictions.
+
+```{r}
+sub80 <- sort(sample(nrow(train_dataset), nrow(train_dataset)* 0.8))
+train_dataset_train <- train_dataset[sub80,]
+train_dataset_test <- train_dataset[-sub80,]
+
+# brief visualisation of the datasets
+dim(train_dataset_train)
+dim(train_dataset_test)
 ```
 
 ### Rearrange data
@@ -96,16 +105,23 @@ We want a 2D tensor (like a data.frame or classical R matrix). This was done by 
 Normalizing the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
 ```{r}
-mnist_data_images <- mnist_data[,2:785]/255
-mnist_data_labels <- mnist_data[,1]
-prediction_images <- testing/255
+train_dataset_train_normalized_features <- train_dataset_train[,2:785]/255
+train_dataset_train_labels <- train_dataset_train[,1]
+
+train_dataset_test_normalized_features <- train_dataset_test[,2:785]/255
+train_dataset_test_labels <- train_dataset_test[,1]
+
+predict_normalized_dataset <- predict_dataset/255
 
 #Change dataset to matrix
-mnist_data_images <- data.matrix(mnist_data_images)
-prediction_images <- data.matrix(prediction_images)
-```
+train_dataset_train_normalized_features <- data.matrix(train_dataset_train_normalized_features)
+train_dataset_train_labels <- data.matrix(train_dataset_train_labels)
 
-RENDUE ICI - NOW HAVE TO SPLIT THE DATA INTO TRAINING AND TESTING BEFORE PREDICTIONS.
+train_dataset_test_normalized_features <- data.matrix(train_dataset_test_normalized_features)
+train_dataset_test_labels <- data.matrix(train_dataset_test_labels)
+
+predict_normalized_dataset <- data.matrix(predict_normalized_dataset)
+```
 
 So we now have two 2D normalized tensors (similar, but not the same as a matrix).
 
@@ -113,7 +129,8 @@ So we now have two 2D normalized tensors (similar, but not the same as a matrix)
 
 Need to format the labels as the data (to categorical), aka one hot encoding.
 ```{r}
-train_labels <- to_categorical(train_labels)
+train_dataset_train_labels <- to_categorical(train_dataset_train_labels)
+train_dataset_test_labels <- to_categorical(train_dataset_test_labels)
 ```
 
 ## Model definition (building a model)
@@ -155,23 +172,22 @@ Provide the label as the desired output (this is supervised learning).
 
 ```{r train}
 history <- network %>%
-  fit(train_data, train_labels, epochs = 25, batch_size = 86)
+  fit(train_dataset_train_normalized_features, train_dataset_train_labels, epochs = 5, batch_size = 100)
 ```
 
 ### Evaluate the model
 
 ```{r evaluate}
-# this barfs as we did not split the dataset in two sets
 metrics <- network %>%
-  evaluate(test_data, test_labels)
+  evaluate(train_dataset_test_normalized_features, train_dataset_test_labels)
 metrics
 ```
 
 ### Predict the test values
 
 ```{r predict}
-Labels <- network %>% predict_classes(test_data)
-Labels
+predicted_labels <- network %>% predict_classes(predict_normalized_dataset)
+predicted_labels
 ```
 
 
@@ -180,7 +196,7 @@ Labels
 ```{r submission format}
 # needs to be two columns: ImageID, Label
 ImageID <- c(1:28000)
-Label <- Labels
+Label <- predicted_labels
 
 df <- data.frame(ImageID, Label)
 
