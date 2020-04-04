@@ -1,22 +1,19 @@
 ---
-title: "Kaggles' Digit Recognizer"
+title: "Digit Recognizer from Kaggle"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE) # display code in output document
-rm(list = ls()) # clears all objects that do not start with a period from the workspace
-```
-
 # The project
 
-In collaboration with some friends, this is my process to solve the Digit Recognizer Kaggle competition in R. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
+In collaboration with some friends, and heavily relying on existing resources, this is my process to solve the Digit Recognizer Kaggle competition in R. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
 
 ## The data
 
-The Kaggle competition is based on the MNIST database (Modified National Institute of Standards and Technology database), a database of handwritten digits with a training set of 60,000 examples and a test set of 10,000 examples (the original data can be found here <http://yann.lecun.com/exdb/mnist/>). The original database provides normalized and centered 28x28 images (28 pixels in height and 28 pixels in width, for a total of 784 pixels).
+The Kaggle competition is based on the MNIST database (Modified National Institute of Standards and Technology database), a database of handwritten digits with a training set of 60,000 examples and a test set of 10,000 examples (the original data can be found here <http://yann.lecun.com/exdb/mnist/>). The original MNIST dataset therefore has a total of 70,000 normalized and centered 28x28 images (28 pixels in height and 28 pixels in width, for a total of 784 pixels).
 
-The formal of the datasets provided for the Kaggle competition is different from the original format. The following three csv files are provided (the datasets descriptions are from the Kaggle website): 
+The format of the datasets provided for the Kaggle competition is different from the original format. Instead of 28x28 pixel images, Kaggle provided the data reshaped to a single line for each image from the initial 28 x 28 pixel images. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker. The data provided on the Kaggle website is also different from the original MNIST dataset in the sense that the training set is only 42,000 examples as opposed to the 60,000 in the original dataset. We have to use the 42,000 examples to train a model to predict 28,000 labels provided in the training set. 
+
+Kaggle provided three csv files with the following descriptions: 
 
 * train.csv - the training dataset with 785 columns. The first column, called "label", is the digit that was drawn by the user. The rest of the columns contain the pixel-values of the associated image. Each pixel column in the training set has a name like pixelx, where x is an integer between 0 and 783, inclusive. To locate this pixel on the image, suppose that we have decomposed x as x = i * 28 + j, where i and j are integers between 0 and 27, inclusive. Then pixelx is located on row i and column j of a 28 x 28 matrix, (indexing by zero).
 
@@ -24,101 +21,100 @@ The formal of the datasets provided for the Kaggle competition is different from
 
 * sample-submission.csv - for each of the 28,000 images in the test set, output a single line containing the ImageId and the digit you predict.
 
-In other words, the format in which the data is provided on the Kaggle plateform is already reshaped to a single line from the initial 28 x 28 pixel images. So no need to do this step. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker.
-
-The data provided on the Kaggle website is also different from the original MNIST dataset in the sense that the training set is only 42,000 examples as opposed to the 60,000 in the original dataset. We have to use the 42,000 examples to train a model to predict 28,000 labels provided in the training set. 
-
 ## The evaluation
 
 The evaluation metric for this contest is the categorization accuracy, or the proportion of test images that are correctly classified. For example, a categorization accuracy of 0.97 indicates that you have correctly classified all but 3% of the images.
   
 # My approach
 
-One could use the 42,000 examples to train a model and then apply this to test.csv, submit to the Kaggle website and get the accuracy ranking. However, in order to be able to predict the accuracy before submitting the data, we need to split the training data (which are labeled) into training and testing datasets. To do so, one can split the data 80/20 for training and testing. 
+One could use the 42,000 examples to train a model and then apply this to test.csv, submit to the Kaggle website and get the accuracy ranking. However, in order to be able to predict the accuracy before submitting the data before submitting it to Kaggle, we need to split the training data (which are labeled) into training and testing datasets. To do so, one can split the data 75/25 for training and testing.  
 
 Based on the Deep Learning with R in Motion: the MNIST dataset video from Manning publications (https://www.youtube.com/watch?v=K6e8WnJeivQ) and Deep Learning with R book written by Francois Chollet and H.H. Allaire (https://www.manning.com/books/deep-learning-with-r), I took the following approach and made the following notes.
 
-The three phases of machine learning projects are:
+For this project, I used the following steps:
 
 1. Data preparation
-    + Obtain
-    + Rearrange
-    + Normalize
-    + Reformat
-2. Model definition (building the model)
-    + define network of architecture building layers
-    + compile the network
-    + train the model
+2. Model definition
 3. Evaluation
-    + Predict labels of the test dataset
-    + Determine accuracy
+4. Submission
     
-Once the model is trained and the accuracy has been tested, we can use it to make predictions.
+This is a single label multi-class (10 options, one for each digit from 0 to 9) classification (trying to predict a categorical variable) problem, in other words, a computer vision problem for which we can use a neural networks, and even convolutional neural network.
 
-This is a single label multi-class (10 options, one for each digit from 0 to 9) classification (trying to predict a categorical variable) problem. This is a computer vision problem for which we can use a neural network.
+# Data preparation
 
-## Data preparation
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) # displays code in output document
+rm(list = ls()) # clears all objects from the workspace
+```
 
 ```{r packages, include = FALSE}
+library(tidymodels)
 library(tidyverse)
 library(keras)
 ```
 
-Note that the data received from Kaggle is in a different format than the video I am following. The original MNIST dataset is provided as 28x28 pixel images that have to be reshaped to be used in the CNN. 
-
-### Obtain data
-
-I obtained my dataset from the Kaggle competition. 
-
-```{r, include = FALSE}
+```{r data, include = FALSE}
 labeled <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
 unlabeled <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+```
 
-# brief visualisation of the datasets
+```{r, include = TRUE}
 dim(labeled)
 dim(unlabeled)
 ```
 
-Good practice is to take the dataset and split it two datasets (80% for the training of the model and 20% for the testing of the model). 
+```{r, include = TRUE}
+labeled[1:6,1:4] # prints first 6 rows and 4 columns
+```
 
-```{r}
-sub80 <- sort(sample(nrow(unlabeled), nrow(unlabeled)* 0.8))
-train <- labeled[sub80,]
-test <- labeled[-sub80,]
+```{r, include = TRUE}
+unlabeled[1:6,1:4] # prints first 6 rows and 4 columns
+```
 
-# brief visualisation of the datasets
+We see from the above that the labeled dataset includes 42,000 rows (so 42,000 images) and 785 columns (so one column for the label and 784 columns for each pixel). The unlabeled dataset is the same as the labeled one without the first column, given that we have to predict it ourselves.
+
+Good practice is to take the dataset on which training will be done and to split it two datasets: one for training and another for testing. This can be done manually, with "sort(sample(nrow(unlabeled), nrow(unlabeled)* 0.75))" or one can use the tidymodels package to do so as done below. 
+
+```{r, include = TRUE}
+set.seed(1234)
+split <- initial_split(labeled)
+train <- training(split)
+test <- testing(split)
+
 dim(train)
 dim(test)
 ```
 
-### Rearrange data
-
-We want a 2D tensor (like a data.frame or classical R matrix). This was done by Kaggle for us. No need to rearrange data in this case.
-
-### Normalize the values
+## Normalize the values
 
 The next step is to normalize the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
 
 ```{r}
-train_features_normalized <- train[,2:785]/255
+train_features <- train[,2:785]/255
 train_labels <- train[,1]
 
-test_features_normalized <- test[,2:785]/255
+test_features <- test[,2:785]/255
 test_labels <- test[,1]
 
-unlabeled_normalized <- unlabeled/255
+unlabeled_features <- unlabeled/255
 
 #Change dataset to matrix
-train_features_normalized <- data.matrix(train_features_normalized)
+train_features <- data.matrix(train_features)
 train_labels <- data.matrix(train_labels)
 
-test_features_normalized <- data.matrix(test_features_normalized)
+test_features <- data.matrix(test_features)
 test_labels <- data.matrix(test_labels)
+ 
+unlabeled_features <- data.matrix(unlabeled_features)
 
-unlabeled_features_normalized <- data.matrix(unlabeled_normalized)
+# those need to be reshaped
+# if do not reshape the data will have the following error message: 
+# expected conv2d_input to have 4 dimensions, but got array with shape (28000, 784)
+
+train_features <- array_reshape(train_features, c(nrow(train_features), 28, 28, 1))
+test_features <- array_reshape(test_features, c(nrow(test_features), 28, 28, 1))
+unlabeled_features <- array_reshape(unlabeled_features, c(nrow(unlabeled_features), 28, 28, 1))
 ```
-
-So we now have two 2D normalized tensors (similar, but not the same as a matrix).
 
 ### Reformat the labels
 
@@ -128,60 +124,125 @@ train_labels <- to_categorical(train_labels)
 test_labels <- to_categorical(test_labels)
 ```
 
-## Model definition (building a model)
+# Model definition
 
-### Simple neural network
+## Instantiating a small convnet
 
-Building a neural network:
-1 - define network of architecture building layers
-2 - compile the network (with 2 functions being the optimization and the loss function)
-3 - train the model with the fit function
+As we already know that we want a convolutional neural network, also known as CNN or convnet. The first step is to instantiate a small convnet.
 
-```{r architecture}
-network <- keras_model_sequential() %>%
-  layer_dense(units = 512, activation = "relu", input_shape = c(28 * 28)) %>%
-  layer_dense(units = 10, activation = "softmax")
-  # units is the number of neurons in a layer
-  summary(network)
+```{r}
+model <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu", input_shape = c(28, 28, 1)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu")%>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu")
 ```
 
-### Compile the model
+We chose to use a convnet simply because they have been successful at computer vision tasks (Chollet and Allaire, 2018). The above step in which a convnet was created is generic, in otherwords, independent of the dataset to which it will be applied.
 
-Add specific function to tell tensor flow which one to use.
-The loss function is what we want to minimize.
-The metrics will be tracked and is the function we want to maximize.
+Let's unpack the above before moving forward. Note that explanations are taken from Chollet and Allaire (2018). The convnet is build with the keras_model_sequential() function from the keras package. This function builds a [model composed of linear stack of layers](https://www.rdocumentation.org/packages/keras/versions/2.2.5.0/topics/keras_model_sequential) which we can see, in this case, there is a total of 5 layers, conv_2d, max_pooling_2d, conv_2d, max_pooling_2d and conv_2d. Let's unpack this:
 
-```{r compile}
-network %>% compile(
-  optimizer = "rmsprop",
+### conv_2d layer
+
+Watching this very useful [video](https://www.youtube.com/watch?v=YRhxdVk_sIs), it became clear to me that the convolution part of the CNN, detects patterns (objects, shapes, textures, edges, corners, circles, etc) in the images through the use of filters. Each filter will detect a different kind of pattern, starting with simple pattern detections (e.g., edge) and progressing to more complex patterns (e.g., eye, ear, feather) at deeper layers to finally be able to detect even more complex objects (e.g., cats, dogs). The size of the filter (refered to as the kernel_size in the model) determines the size of the matrix that will be slidded, or convolved, over the image. I encourage you to watch this video as convnet are really well explained. Thank you to the deeplizard.
+
+So, the convnet_2d_layer requires 3 to 4 parameters, let's unpack those:
+* input_shape = c(28, 28, 1): this is passed to the first layer only, in this case, it indicates that the images are 28 x 28 x 1
+* filters = 32: the number of filters applied in this layer (32 and 64 seems to be standard)
+* kernel_size = c(3, 3): the size of the filter, here 3x3 pixels
+* activation = "relu": an activation function typically follows a layer in a neural network to determine the output. See this other [video about activation](https://www.youtube.com/watch?v=m0pIlLfpXWE) for a clear explation. Relu is one of many activation function. The relu activation function will transform all negative input to zero and positive inputs are transformed to positive outputs (the more positive the input, the more activated the neuron is).
+
+### max_pooling_2d
+
+The max_pooling_2d step is a step to aggresively downsample feature maps Chollet and Allaire (2018). It works in a similar way as the convnet, in the sense that it slides over a given set of pixel, but in this case, returns the highest value. There is a great [video](https://www.youtube.com/watch?v=ZjM_XQa5s6s) on YouTube explaining this in details.
+
+## Adding a classifier on top of the convnet
+
+Before passing on the model to a dense layer, it has to be flatten from 3D to 1D.
+
+```{r}
+model <- model %>%
+  layer_flatten() %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 10, activation = "softmax")
+```
+
+## Training the convnet on the images
+
+```{r}
+model %>% compile(
+  optimizer = "rmsprop", 
   loss = "categorical_crossentropy",
-  metrics = c("accuracy")
+  metric = c("accuracy")
 )
 ```
 
-There is no need save this into a new object since the compile function update the object, here being the network.
 
-### Train the model
-
-Provide the label as the desired output (this is supervised learning).
-
-```{r train}
-history <- network %>%
-  fit(train_features_normalized, train_labels, epochs = 5, batch_size = 128)
+```{r}
+model %>% fit(
+  train_features, train_labels,
+  epochs = 5, batch_size = 64
+)
 ```
 
-### Evaluate the model
-
-```{r evaluate}
-metrics <- network %>%
-  evaluate(test_features_normalized, test_labels)
-metrics
+```{r}
+results <- model %>% evaluate(test_features, test_labels)
+results
 ```
 
-### Predict the test values
+<!-- ### Simple neural network -->
+
+<!-- Building a neural network: -->
+<!-- 1 - define network of architecture building layers -->
+<!-- 2 - compile the network (with 2 functions being the optimization and the loss function) -->
+<!-- 3 - train the model with the fit function -->
+
+<!-- ```{r architecture} -->
+<!-- network <- keras_model_sequential() %>% -->
+<!--   layer_dense(units = 512, activation = "relu", input_shape = c(28 * 28)) %>% -->
+<!--   layer_dense(units = 10, activation = "softmax") -->
+<!--   # units is the number of neurons in a layer -->
+<!--   summary(network) -->
+<!-- ``` -->
+
+<!-- ### Compile the model -->
+
+<!-- Add specific function to tell tensor flow which one to use. -->
+<!-- The loss function is what we want to minimize. -->
+<!-- The metrics will be tracked and is the function we want to maximize. -->
+
+<!-- ```{r compile} -->
+<!-- network %>% compile( -->
+<!--   optimizer = "rmsprop", -->
+<!--   loss = "categorical_crossentropy", -->
+<!--   metrics = c("accuracy") -->
+<!-- ) -->
+<!-- ``` -->
+
+<!-- There is no need save this into a new object since the compile function update the object, here being the network. -->
+
+<!-- ### Train the model -->
+
+<!-- Provide the label as the desired output (this is supervised learning). -->
+
+<!-- ```{r train} -->
+<!-- history <- network %>% -->
+<!--   fit(train_features_normalized, train_labels, epochs = 5, batch_size = 128) -->
+<!-- ``` -->
+
+<!-- # Evaluation -->
+
+<!-- ```{r evaluate} -->
+<!-- metrics <- network %>% -->
+<!--   evaluate(test_features_normalized, test_labels) -->
+<!-- metrics -->
+<!-- ``` -->
+
+<!-- ### Predict the test values -->
 
 ```{r predict}
-predicted_labels <- network %>% predict_classes(unlabeled_features_normalized)
+predicted_labels <- model %>% predict_classes(unlabeled_features)
 predicted_labels
 ```
 
@@ -207,3 +268,6 @@ write_csv(df, path)
 
 * Deep Learning with R, Francois Chollet
 
+References:
+
+Chollet and Allaire, 2018. Deep Learning with R. Manning. 
