@@ -1,0 +1,198 @@
+---
+title: "Kaggles' Digit Recognizer"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) # display code in output document
+rm(list = ls()) # clears all objects that do not start with a period from the workspace
+```
+
+# The project
+
+In collaboration with some friends, this is my process to solve the Digit Recognizer Kaggle competition in R. For all details about this competition see <https://www.kaggle.com/c/digit-recognizer/data>.
+
+## The data
+
+The Kaggle competition is based on the MNIST database (Modified National Institute of Standards and Technology database), a database of handwritten digits with a training set of 60,000 examples and a test set of 10,000 examples (the original data can be found here <http://yann.lecun.com/exdb/mnist/>). The original database provides normalized and centered 28x28 images (28 pixels in height and 28 pixels in width, for a total of 784 pixels).
+
+The formal of the datasets provided for the Kaggle competition is different from the original format. The following three csv files are provided (the datasets descriptions are from the Kaggle website): 
+
+* train.csv - the training dataset with 785 columns. The first column, called "label", is the digit that was drawn by the user. The rest of the columns contain the pixel-values of the associated image. Each pixel column in the training set has a name like pixelx, where x is an integer between 0 and 783, inclusive. To locate this pixel on the image, suppose that we have decomposed x as x = i * 28 + j, where i and j are integers between 0 and 27, inclusive. Then pixelx is located on row i and column j of a 28 x 28 matrix, (indexing by zero).
+
+* test.csv - same as the training set, except that it does not contain the "label" column.
+
+* sample-submission.csv - for each of the 28,000 images in the test set, output a single line containing the ImageId and the digit you predict.
+
+In other words, the format in which the data is provided on the Kaggle plateform is already reshaped to a single line from the initial 28 x 28 pixel images. So no need to do this step. Each pixel has a single pixel-value between 0 and 255 associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker.
+
+The data provided on the Kaggle website is also different from the original MNIST dataset in the sense that the training set is only 42,000 examples as opposed to the 60,000 in the original dataset. We have to use the 42,000 examples to train a model to predict 28,000 labels provided in the training set. 
+
+## The evaluation
+
+The evaluation metric for this contest is the categorization accuracy, or the proportion of test images that are correctly classified. For example, a categorization accuracy of 0.97 indicates that you have correctly classified all but 3% of the images.
+  
+# My approach
+
+One could use the 42,000 examples to train a model and then apply this to test.csv, submit to the Kaggle website and get the accuracy ranking. However, in order to be able to predict the accuracy before submitting the data, we need to split the training data (which are labeled) into training and testing datasets. To do so, one can split the data 80/20 for training and testing. 
+
+Based on the Deep Learning with R in Motion: the MNIST dataset video from Manning publications (https://www.youtube.com/watch?v=K6e8WnJeivQ) and Deep Learning with R book written by Francois Chollet and H.H. Allaire (https://www.manning.com/books/deep-learning-with-r), I took the following approach and made the following notes.
+
+The three phases of machine learning projects are:
+
+1. Data preparation
+    + Obtain
+    + Rearrange
+    + Normalize
+    + Reformat
+2. Model definition (building the model)
+    + define network of architecture building layers
+    + compile the network
+    + train the model
+3. Evaluation
+    + Predict labels of the test dataset
+    + Determine accuracy
+    
+Once the model is trained and the accuracy has been tested, we can use it to make predictions.
+
+This is a single label multi-class (10 options, one for each digit from 0 to 9) classification (trying to predict a categorical variable) problem. This is a computer vision problem for which we can use a neural network.
+
+## Data preparation
+
+```{r packages, include = FALSE}
+library(tidyverse)
+library(keras)
+```
+
+Note that the data received from Kaggle is in a different format than the video I am following. The original MNIST dataset is provided as 28x28 pixel images that have to be reshaped to be used in the CNN. 
+
+### Obtain data
+
+I obtained my dataset from the Kaggle competition. 
+
+```{r, include = FALSE}
+labeled <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/train.csv")
+unlabeled <- read.csv("~/projects/kaggle/digit-recognizer/data/raw/test.csv")
+# brief visualisation of the datasets
+dim(labeled)
+dim(unlabeled)
+```
+
+Good practice is to take the dataset and split it two datasets (80% for the training of the model and 20% for the testing of the model). 
+
+```{r}
+sub80 <- sort(sample(nrow(unlabeled), nrow(unlabeled)* 0.8))
+train <- labeled[sub80,]
+test <- labeled[-sub80,]
+# brief visualisation of the datasets
+dim(train)
+dim(test)
+```
+
+### Rearrange data
+
+We want a 2D tensor (like a data.frame or classical R matrix). This was done by Kaggle for us. No need to rearrange data in this case.
+
+### Normalize the values
+
+The next step is to normalize the values so that each pixel is represented by a value between 0 and 1 (as opposed to 0 and 255). This is done by simply dividing the value of each pixel by 255.
+
+```{r}
+train_features_normalized <- train[,2:785]/255
+train_labels <- train[,1]
+test_features_normalized <- test[,2:785]/255
+test_labels <- test[,1]
+unlabeled_normalized <- unlabeled/255
+#Change dataset to matrix
+train_features_normalized <- data.matrix(train_features_normalized)
+train_labels <- data.matrix(train_labels)
+test_features_normalized <- data.matrix(test_features_normalized)
+test_labels <- data.matrix(test_labels)
+unlabeled_features_normalized <- data.matrix(unlabeled_normalized)
+```
+
+So we now have two 2D normalized tensors (similar, but not the same as a matrix).
+
+### Reformat the labels
+
+Need to format the labels as the data (to categorical), aka one hot encoding.
+```{r}
+train_labels <- to_categorical(train_labels)
+test_labels <- to_categorical(test_labels)
+```
+
+## Model definition (building a model)
+
+### Simple neural network
+
+Building a neural network:
+1 - define network of architecture building layers
+2 - compile the network (with 2 functions being the optimization and the loss function)
+3 - train the model with the fit function
+
+```{r architecture}
+network <- keras_model_sequential() %>%
+  layer_dense(units = 512, activation = "relu", input_shape = c(28 * 28)) %>%
+  layer_dense(units = 10, activation = "softmax")
+  # units is the number of neurons in a layer
+  summary(network)
+```
+
+### Compile the model
+
+Add specific function to tell tensor flow which one to use.
+The loss function is what we want to minimize.
+The metrics will be tracked and is the function we want to maximize.
+
+```{r compile}
+network %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+```
+
+There is no need save this into a new object since the compile function update the object, here being the network.
+
+### Train the model
+
+Provide the label as the desired output (this is supervised learning).
+
+```{r train}
+history <- network %>%
+  fit(train_features_normalized, train_labels, epochs = 5, batch_size = 128)
+```
+
+### Evaluate the model
+
+```{r evaluate}
+metrics <- network %>%
+  evaluate(test_features_normalized, test_labels)
+metrics
+```
+
+### Predict the test values
+
+```{r predict}
+predicted_labels <- network %>% predict_classes(unlabeled_features_normalized)
+predicted_labels
+```
+
+### Save predictions to submission format
+
+```{r submission format}
+# needs to be two columns: ImageID, Label
+ImageID <- c(1:28000)
+Label <- predicted_labels
+df <- data.frame(ImageID, Label)
+path <- "~/projects/kaggle/digit-recognizer/data/processed/submission.csv"
+write_csv(df, path)
+```
+
+## Useful resources
+
+* https://www.youtube.com/watch?v=K6e8WnJeivQ
+
+* https://www.kaggle.com/wwu651/cnn-keras-with-r
+
+* Deep Learning with R, Francois Chollet
